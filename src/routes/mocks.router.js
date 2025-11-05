@@ -1,60 +1,66 @@
 import { Router } from "express";
-import { faker } from "@faker-js/faker";
-import { generateMockUsers } from "../mocking/mockingUsers.js";
-import { UserModel } from "../models/user.model.js";
-import { PetModel } from "../models/pet.model.js";
+import { generateMockUsers } from "../mocks/mockUsers.js";
+import { generateMockPets } from "../mocks/mockPets.js";
 
 const router = Router();
 
-/* === /api/mocks/mockingpets === */
-router.get("/mockingpets", (req, res) => {
-  const pets = [];
-
-  for (let i = 0; i < 10; i++) {
-    pets.push({
-      _id: faker.database.mongodbObjectId(),
-      name: faker.animal.petName(),
-      species: faker.animal.type(),
-      age: faker.number.int({ min: 1, max: 15 }),
-    });
-  }
-
-  res.json({ status: "success", payload: pets });
-});
-
-/* === /api/mocks/mockingusers === */
-router.get("/mockingusers", (req, res) => {
-  const users = generateMockUsers(50);
-  res.json({ status: "success", payload: users });
-});
-
-/* === /api/mocks/generateData === */
-router.post("/generateData", async (req, res) => {
+/**
+ * @route GET /api/mocks/mockingusers
+ * @desc Genera usuarios de prueba (por defecto 10)
+ */
+router.get("/mockingusers", async (req, res) => {
   try {
-    const { users = 0, pets = 0 } = req.query;
+    const users = await generateMockUsers();
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Error al generar usuarios mock", details: error.message });
+  }
+});
 
-    // Generar usuarios
-    const newUsers = generateMockUsers(Number(users));
-    await UserModel.insertMany(newUsers);
+/**
+ * @route GET /api/mocks/generateData?users=5&pets=10
+ * @desc Genera usuarios y mascotas mockeadas con validaciones
+ */
+router.get("/generateData", async (req, res) => {
+  try {
+    let { users = 10, pets = 10 } = req.query;
+    users = Number(users);
+    pets = Number(pets);
 
-    // Generar mascotas
-    const newPets = [];
-    for (let i = 0; i < pets; i++) {
-      newPets.push({
-        name: faker.animal.petName(),
-        species: faker.animal.type(),
-        age: faker.number.int({ min: 1, max: 15 }),
-      });
+    if (isNaN(users) || isNaN(pets)) {
+      return res.status(400).json({ error: "Los parámetros 'users' y 'pets' deben ser números." });
     }
-    await PetModel.insertMany(newPets);
 
-    res.json({
+    if (users < 0 || pets < 0) {
+      return res.status(400).json({ error: "Los parámetros 'users' y 'pets' no pueden ser negativos." });
+    }
+
+    const userList = await generateMockUsers(users);
+    const petList = generateMockPets(pets, userList);
+
+    res.status(200).json({
       status: "success",
-      inserted: { users: newUsers.length, pets: newPets.length },
+      totalUsers: userList.length,
+      totalPets: petList.length,
+      data: { users: userList, pets: petList },
     });
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ error: "Error al generar datos", details: error.message });
   }
+});
+
+/**
+ * @route GET /api/mocks/docs
+ * @desc Documentación simple de los endpoints de mocks
+ */
+router.get("/docs", (req, res) => {
+  res.status(200).json({
+    endpoints: {
+      "/api/mocks/mockingusers": "Genera 10 usuarios aleatorios con contraseña encriptada",
+      "/api/mocks/generateData?users=5&pets=10": "Genera usuarios y mascotas. Parámetros opcionales: users, pets",
+    },
+    defaults: { users: 10, pets: 10 },
+  });
 });
 
 export default router;

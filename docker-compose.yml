@@ -1,0 +1,22 @@
+services:
+  mongo:
+    image: mongo:6
+    container_name: mongo-mocks
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  app:
+    image: david8576/proyecto-mocks:latest
+    container_name: proyecto-mocks
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=proyecto_mocks
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:

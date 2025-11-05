@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const petSchema = new mongoose.Schema({
   name: String,
-  species: String,
-  age: Number,
+  type: String,
+  adopted: { type: Boolean, default: false }
 });
 
-export const PetModel = mongoose.model("Pet", petSchema);
+export const Pet = mongoose.model("Pet", petSchema);
